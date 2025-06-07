@@ -1,0 +1,72 @@
+# filename: sim_data_app.py
+
+import streamlit as st
+import pandas as pd
+import os
+import sys
+
+# Ensure the directory containing generate_simulated_data.py is in the Python path
+# This is usually the current directory, but good for explicit imports.
+script_dir = os.path.dirname(__file__)
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
+# Import the data generation function
+from generate_simulated_data import generate_and_save_synthetic_data
+
+# Define the filename for the generated data
+DATA_FILENAME = 'simulated_disco_data.csv'
+
+st.set_page_config(layout="centered", page_title="Simulated DISCO Meter Data Generator")
+
+st.title("📊 Simulated DISCO Meter Data Generator")
+st.markdown("---") # Horizontal line for separation
+
+st.markdown("""
+    This application allows you to generate a synthetic dataset of meter consumption
+    and billing data, including simulated tampering instances.
+    This data can be used to test the main Meter Tampering Detection System.
+""")
+st.write("") # Add some space
+
+# --- Configuration for Data Generation (Optional: allow user to set parameters) ---
+st.sidebar.header("Generation Parameters")
+num_customers = st.sidebar.slider("Number of Customers", 100, 10000, 5000, 100)
+num_months = st.sidebar.slider("Number of Months", 6, 24, 12, 1)
+tampering_rate = st.sidebar.slider("Tampering Rate (as %)", 0.5, 5.0, 1.5, 0.1) / 100
+
+st.sidebar.markdown("---")
+
+# --- Generate Data Button ---
+if st.button("⚙️ Generate New Simulated Data"):
+    with st.spinner(f"Generating {num_customers} customers over {num_months} months with {tampering_rate*100:.1f}% tampering..."):
+        generate_and_save_synthetic_data(
+            num_customers=num_customers,
+            num_months=num_months,
+            tampering_rate=tampering_rate,
+            filename=DATA_FILENAME
+        )
+    st.success(f"Data generation complete! Saved to '{DATA_FILENAME}'.")
+
+    # Store a flag in session state to indicate data is generated
+    st.session_state['data_generated'] = True
+    st.experimental_rerun() # Rerun to show download button immediately
+
+# --- Download Button (appears after data is generated) ---
+if os.path.exists(DATA_FILENAME):
+    st.markdown("### Download Generated Data")
+    with open(DATA_FILENAME, "rb") as file:
+        st.download_button(
+            label="⬇️ Download simulated_disco_data.csv",
+            data=file,
+            file_name=DATA_FILENAME,
+            mime="text/csv"
+        )
+    st.info(f"The file '{DATA_FILENAME}' is ready for download. This file can then be used by the main detection system.")
+elif 'data_generated' in st.session_state and st.session_state['data_generated']:
+    st.warning(f"Error: '{DATA_FILENAME}' was not found after generation. Please try again.")
+else:
+    st.info("Click 'Generate New Simulated Data' to create the dataset.")
+
+st.markdown("---")
+st.caption("Developed for PhD Research on NTL Detection.")
